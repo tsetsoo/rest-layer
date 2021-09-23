@@ -48,9 +48,27 @@ func TestMatch(t *testing.T) {
 			nil,
 		},
 		{
+			`{"foo": {"$not": {"$ne": "bar"}}}`, []test{
+				{map[string]interface{}{"foo": "bar"}, true},
+				{map[string]interface{}{"foo": "baz"}, false},
+				{map[string]interface{}{"foo": []interface{}{"bar", "baz"}}, true},
+				{map[string]interface{}{"foo": []interface{}{"bar"}}, true},
+				{map[string]interface{}{"foo": []interface{}{"baz"}}, false},
+				{map[string]interface{}{"foo": []interface{}{}}, false},
+			},
+			nil,
+		},
+		{
 			`{"foo": {"$exists": true}}`, []test{
 				{map[string]interface{}{"foo": "bar"}, true},
 				{map[string]interface{}{"bar": "baz"}, false},
+			},
+			nil,
+		},
+		{
+			`{"foo": {"$not": {"$exists": true}}}`, []test{
+				{map[string]interface{}{"foo": "bar"}, false},
+				{map[string]interface{}{"bar": "baz"}, true},
 			},
 			nil,
 		},
@@ -69,9 +87,23 @@ func TestMatch(t *testing.T) {
 			&schemaFooInteger,
 		},
 		{
+			`{"foo": {"$not": {"$gt": 1}}}`, []test{
+				{map[string]interface{}{"foo": 1}, true},
+				{map[string]interface{}{"foo": 2}, false},
+			},
+			&schemaFooInteger,
+		},
+		{
 			`{"foo": {"$gte": 2}}`, []test{
 				{map[string]interface{}{"foo": 1}, false},
 				{map[string]interface{}{"foo": 2}, true},
+			},
+			&schemaFooInteger,
+		},
+		{
+			`{"foo": {"$not": {"$gte": 2}}}`, []test{
+				{map[string]interface{}{"foo": 1}, true},
+				{map[string]interface{}{"foo": 2}, false},
 			},
 			&schemaFooInteger,
 		},
@@ -83,6 +115,13 @@ func TestMatch(t *testing.T) {
 			&schemaFooInteger,
 		},
 		{
+			`{"foo": {"$not": {"$lt": 2}}}`, []test{
+				{map[string]interface{}{"foo": 1}, false},
+				{map[string]interface{}{"foo": 2}, true},
+			},
+			&schemaFooInteger,
+		},
+		{
 			`{"foo": {"$lte": 1}}`, []test{
 				{map[string]interface{}{"foo": 1}, true},
 				{map[string]interface{}{"foo": 2}, false},
@@ -90,9 +129,23 @@ func TestMatch(t *testing.T) {
 			&schemaFooInteger,
 		},
 		{
+			`{"foo": {"$not": {"$lte": 1}}}`, []test{
+				{map[string]interface{}{"foo": 1}, false},
+				{map[string]interface{}{"foo": 2}, true},
+			},
+			&schemaFooInteger,
+		},
+		{
 			`{"foo": {"$in": ["bar", "baz"]}}`, []test{
 				{map[string]interface{}{"foo": "bar"}, true},
 				{map[string]interface{}{"foo": "foo"}, false},
+			},
+			nil,
+		},
+		{
+			`{"foo": {"$not": {"$in": ["bar", "baz"]}}}`, []test{
+				{map[string]interface{}{"foo": "bar"}, false},
+				{map[string]interface{}{"foo": "foo"}, true},
 			},
 			nil,
 		},
@@ -107,6 +160,13 @@ func TestMatch(t *testing.T) {
 			`{"foo": {"$nin": ["bar", "baz"]}}`, []test{
 				{map[string]interface{}{"foo": "bar"}, false},
 				{map[string]interface{}{"foo": "foo"}, true},
+			},
+			nil,
+		},
+		{
+			`{"foo": {"$not": {"$nin": ["bar", "baz"]}}}`, []test{
+				{map[string]interface{}{"foo": "bar"}, true},
+				{map[string]interface{}{"foo": "foo"}, false},
 			},
 			nil,
 		},
@@ -141,8 +201,20 @@ func TestMatch(t *testing.T) {
 			nil,
 		},
 		{
+			`{"foo": {"$not": "rege[x]{1}.+some"}}`, []test{
+				{map[string]interface{}{"foo": "regex-is-awesome"}, false},
+			},
+			nil,
+		},
+		{
 			`{"foo": {"$regex": "^(?i)my.+-rest.+$"}}`, []test{
 				{map[string]interface{}{"foo": "myAwesome-RESTApplication"}, true},
+			},
+			nil,
+		},
+		{
+			`{"foo": {"$not": "^(?i)my.+-rest.+$"}}`, []test{
+				{map[string]interface{}{"foo": "myAwesome-RESTApplication"}, false},
 			},
 			nil,
 		},
@@ -181,6 +253,16 @@ func TestMatch(t *testing.T) {
 			},
 			nil,
 		},
+		{
+			`{"foo": {"$not": {$ne: ["bar","baz"]}}}`, []test{
+				{map[string]interface{}{"foo": []interface{}{"bar", "baz"}}, true},
+				{map[string]interface{}{"foo": []interface{}{"bar"}}, false},
+				{map[string]interface{}{"foo": []interface{}{"baz"}}, false},
+				{map[string]interface{}{"foo": []interface{}{"bar", "baz", "tar"}}, false},
+				{map[string]interface{}{"foo": []interface{}{}}, false},
+			},
+			nil,
+		},
 
 		{
 			`{"foo": {$elemMatch: {a: "bar",b: "baz"}}}`, []test{
@@ -191,6 +273,18 @@ func TestMatch(t *testing.T) {
 				{map[string]interface{}{"foo": []interface{}{map[string]interface{}{"a": "bar", "c": "baz1"}}}, false},
 				{map[string]interface{}{"foo": []interface{}{map[string]interface{}{}}}, false},
 				{map[string]interface{}{"foo": []interface{}{}}, false},
+			},
+			nil,
+		},
+		{
+			`{"foo": {"$not": {$elemMatch: {a: "bar",b: "baz"}}}}`, []test{
+				{map[string]interface{}{"foo": []interface{}{map[string]interface{}{"a": "bar"}}}, true},
+				{map[string]interface{}{"foo": []interface{}{map[string]interface{}{"a": "bar", "b": "baz"}}}, false},
+				{map[string]interface{}{"foo": []interface{}{map[string]interface{}{"a": "bar", "b": "baz"}, map[string]interface{}{"c": "bar", "d": "baz"}}}, false},
+				{map[string]interface{}{"foo": []interface{}{map[string]interface{}{"a": "bar", "b": "baz1"}}}, true},
+				{map[string]interface{}{"foo": []interface{}{map[string]interface{}{"a": "bar", "c": "baz1"}}}, true},
+				{map[string]interface{}{"foo": []interface{}{map[string]interface{}{}}}, true},
+				{map[string]interface{}{"foo": []interface{}{}}, true},
 			},
 			nil,
 		},

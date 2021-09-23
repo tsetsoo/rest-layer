@@ -107,7 +107,7 @@ func (p *predicateParser) parseExpression() (Expression, error) {
 		or := Or(subExp)
 		return &or, nil
 	case opExists, opIn, opNotIn, opNotEqual, opRegex, opElemMatch,
-		opLowerThan, opLowerOrEqual, opGreaterThan, opGreaterOrEqual:
+		opLowerThan, opLowerOrEqual, opGreaterThan, opGreaterOrEqual, opNot:
 		p.pos = oldPos
 		return nil, fmt.Errorf("%s: invalid placement", label)
 	default:
@@ -258,6 +258,30 @@ func (p *predicateParser) parseCommand(field string) (Expression, error) {
 				return nil, fmt.Errorf("%s: expected '}' got %q", label, p.peek())
 			}
 			return &ElemMatch{Field: field, Exps: exps}, nil
+		case opNot:
+			initialNotPosition := p.pos
+			str, err := p.parseString()
+			if err != nil {
+				p.pos = initialNotPosition
+				exp, err := p.parseCommand(field)
+				if err != nil {
+					return nil, fmt.Errorf("%s: %v", label, err)
+				}
+				p.eatWhitespaces()
+				if !p.expect('}') {
+					return nil, fmt.Errorf("%s: expected '}' got %q", label, p.peek())
+				}
+				return &Not{Field: field, Negated: exp}, nil
+			}
+			re, err := regexp.Compile(str)
+			if err != nil {
+				return nil, fmt.Errorf("%s: invalid regex: %v", label, err)
+			}
+			p.eatWhitespaces()
+			if !p.expect('}') {
+				return nil, fmt.Errorf("%s: expected '}' got %q", label, p.peek())
+			}
+			return &Not{Field: field, Value: re}, nil
 		}
 	}
 VALUE:

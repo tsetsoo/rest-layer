@@ -22,6 +22,7 @@ const (
 	opGreaterOrEqual = "$gte"
 	opRegex          = "$regex"
 	opElemMatch      = "$elemMatch"
+	opNot            = "$not"
 )
 
 // Predicate defines an expression against a schema to perform a match on schema's data.
@@ -551,4 +552,36 @@ func (e ElemMatch) String() string {
 		s = append(s, v.String())
 	}
 	return quoteField(e.Field) + ": {" + opElemMatch + ": {" + strings.Join(s, ", ") + "}}"
+}
+
+type Not struct {
+	Field   string
+	Value   *regexp.Regexp
+	Negated Expression
+}
+
+// Match implements Expression interface.
+func (e Not) Match(payload map[string]interface{}) bool {
+	if e.Value != nil {
+		return !e.Value.MatchString(payload[e.Field].(string))
+	}
+	return !e.Negated.Match(payload)
+}
+
+// Prepare implements Expression interface.
+func (e *Not) Prepare(validator schema.Validator) error {
+	if e.Value != nil {
+		_, err := prepareValue(e.Field, e.Value.String(), validator)
+		return err
+	}
+	return e.Negated.Prepare(validator)
+}
+
+// String implements Expression interface.
+func (e Not) String() string {
+	if e.Value != nil {
+		return quoteField(e.Field) + ": {$not: \"" + e.Value.String() + "\"}"
+	}
+	toSomething := e.Negated.String()[len(quoteField(e.Field)+": {"):]
+	return quoteField(e.Field) + ": {" + opNot + ": {" + toSomething + "}"
 }

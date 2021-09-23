@@ -73,8 +73,18 @@ func TestParse(t *testing.T) {
 			nil,
 		},
 		{
+			`{"foo": {"$not": {"$ne": "bar"}}}`,
+			Predicate{&Not{Field: "foo", Negated: &NotEqual{Field: "foo", Value: "bar"}}},
+			nil,
+		},
+		{
 			`{"foo": {"$exists": true}}`,
 			Predicate{&Exist{Field: "foo"}},
+			nil,
+		},
+		{
+			`{"foo": {"$not": {"$exists": true}}}`,
+			Predicate{&Not{Field: "foo", Negated: &Exist{Field: "foo"}}},
 			nil,
 		},
 		{
@@ -85,6 +95,11 @@ func TestParse(t *testing.T) {
 		{
 			`{"baz": {"$gt": 1}}`,
 			Predicate{&GreaterThan{Field: "baz", Value: float64(1)}},
+			nil,
+		},
+		{
+			`{"baz":  {"$not": {"$gt": 1}}}`,
+			Predicate{&Not{Field: "baz", Negated: &GreaterThan{Field: "baz", Value: float64(1)}}},
 			nil,
 		},
 		{
@@ -104,6 +119,11 @@ func TestParse(t *testing.T) {
 			nil,
 		},
 		{
+			`{"foo": {"$not": "regex.+awesome"}}`,
+			Predicate{&Not{Field: "foo", Value: regexp.MustCompile("regex.+awesome")}},
+			nil,
+		},
+		{
 			`{"$and": [{"foo": "bar"}, {"foo": "baz"}]}`,
 			Predicate{&And{&Equal{Field: "foo", Value: "bar"}, &Equal{Field: "foo", Value: "baz"}}},
 			nil,
@@ -119,8 +139,18 @@ func TestParse(t *testing.T) {
 			nil,
 		},
 		{
+			`{"foo":  {"$not": {"$in": ["bar", "baz"]}}}`,
+			Predicate{&Not{Field: "foo", Negated: &In{Field: "foo", Values: []Value{"bar", "baz"}}}},
+			nil,
+		},
+		{
 			`{"foo": {"$nin": ["bar", "baz"]}}`,
 			Predicate{&NotIn{Field: "foo", Values: []Value{"bar", "baz"}}},
+			nil,
+		},
+		{
+			`{"foo":  {"$not": {"$nin": ["bar", "baz"]}}}`,
+			Predicate{&Not{Field: "foo", Negated: &NotIn{Field: "foo", Values: []Value{"bar", "baz"}}}},
 			nil,
 		},
 		{
@@ -134,8 +164,18 @@ func TestParse(t *testing.T) {
 			nil,
 		},
 		{
+			`{"bar": {"$not": {"$gt": "1"}}}`,
+			Predicate{&Not{Field: "bar", Negated: &GreaterThan{Field: "bar", Value: "1"}}},
+			nil,
+		},
+		{
 			`{"foo": {"$elemMatch": {"bar": "one", "baz": "two"}}}`,
 			Predicate{&ElemMatch{Field: "foo", Exps: []Expression{&Equal{Field: "bar", Value: "one"}, &Equal{Field: "baz", Value: "two"}}}},
+			nil,
+		},
+		{
+			`{"foo":  {"$not": {"$elemMatch": {"bar": "one", "baz": "two"}}}}`,
+			Predicate{&Not{Field: "foo", Negated: &ElemMatch{Field: "foo", Exps: []Expression{&Equal{Field: "bar", Value: "one"}, &Equal{Field: "baz", Value: "two"}}}}},
 			nil,
 		},
 		{
@@ -360,6 +400,11 @@ func TestParse(t *testing.T) {
 			`{"$elemMatch": "someregexpression"}`,
 			Predicate{},
 			errors.New("char 1: $elemMatch: invalid placement"),
+		},
+		{
+			`{"$not": "someregexpression"}`,
+			Predicate{},
+			errors.New("char 1: $not: invalid placement"),
 		},
 	}
 	for i := range tests {
